@@ -1,7 +1,5 @@
 package com.example.lasttime.presentation.addactivity
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,12 +7,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -103,7 +104,7 @@ fun AddActivityScreen(
             ) {
                 OutlinedTextField(
                     value = state.name,
-                    onValueChange = { viewModel.onEvent(AddActivityEvent.NameChanged(it)) },
+                    onValueChange = { viewModel.onNameChanged(it) },
                     label = { Text("Nome da atividade") },
                     isError = state.nameError != null,
                     supportingText = { state.nameError?.let { Text(it) } },
@@ -112,7 +113,7 @@ fun AddActivityScreen(
                         capitalization = KeyboardCapitalization.Sentences,
                         imeAction = ImeAction.Done
                     ),
-                    keyboardActions = KeyboardActions(onDone = { viewModel.onEvent(AddActivityEvent.Save) }),
+                    keyboardActions = KeyboardActions(onDone = { viewModel.save() }),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -130,7 +131,7 @@ fun AddActivityScreen(
                 }
 
                 Button(
-                    onClick = { viewModel.onEvent(AddActivityEvent.Save) },
+                    onClick = { viewModel.save() },
                     enabled = !state.isSaving,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -150,7 +151,7 @@ fun AddActivityScreen(
             confirmButton = {
                 TextButton(onClick = {
                     pickerState.selectedDateMillis?.let {
-                        viewModel.onEvent(AddActivityEvent.DateChanged(it.toLocalDateFromUtcMillis()))
+                        viewModel.onDateChanged(it.toLocalDateFromUtcMillis())
                     }
                     showDatePicker = false
                 }) { Text("OK") }

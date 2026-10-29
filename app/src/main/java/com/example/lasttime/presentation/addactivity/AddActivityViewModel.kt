@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.lasttime.data.repository.ActivityRepository
 import com.example.lasttime.domain.model.ActivityRules
-import com.example.lasttime.domain.model.toUserMessage
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +14,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+/**
+ * Estado da tela de criação de atividade.
+ */
 data class AddActivityUiState(
     val name: String = "",
     val date: LocalDate = LocalDate.now(),
@@ -23,12 +25,9 @@ data class AddActivityUiState(
     val saved: Boolean = false
 )
 
-sealed interface AddActivityEvent {
-    data class NameChanged(val name: String) : AddActivityEvent
-    data class DateChanged(val date: LocalDate) : AddActivityEvent
-    data object Save : AddActivityEvent
-}
-
+/**
+ * ViewModel simples para gerenciamento da tela de criação.
+ */
 class AddActivityViewModel(private val repository: ActivityRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddActivityUiState())
@@ -37,19 +36,18 @@ class AddActivityViewModel(private val repository: ActivityRepository) : ViewMod
     private val _messages = Channel<String>(Channel.BUFFERED)
     val messages: Flow<String> = _messages.receiveAsFlow()
 
-    fun onEvent(event: AddActivityEvent) {
-        when (event) {
-            is AddActivityEvent.NameChanged -> _uiState.update { it.copy(name = event.name, nameError = null) }
-            is AddActivityEvent.DateChanged -> _uiState.update { it.copy(date = event.date) }
-            AddActivityEvent.Save -> save()
-        }
+    fun onNameChanged(newName: String) {
+        _uiState.update { it.copy(name = newName, nameError = null) }
     }
 
-    private fun save() {
+    fun onDateChanged(newDate: LocalDate) {
+        _uiState.update { it.copy(date = newDate) }
+    }
+
+    fun save() {
         val current = _uiState.value
         if (current.isSaving) return
 
-        // Erro de entrada: mostrado junto ao campo
         val nameError = ActivityRules.validateName(current.name)
         if (nameError != null) {
             _uiState.update { it.copy(nameError = nameError) }
@@ -58,13 +56,13 @@ class AddActivityViewModel(private val repository: ActivityRepository) : ViewMod
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true) }
-            repository.addActivity(current.name, current.date).fold(
-                onSuccess = { _uiState.update { it.copy(isSaving = false, saved = true) } },
-                onFailure = { error ->
-                    _uiState.update { it.copy(isSaving = false) }
-                    _messages.send(error.toUserMessage("Não foi possível salvar a atividade."))
-                }
-            )
+            try {
+                repository.addActivity(current.name, current.date)
+                _uiState.update { it.copy(isSaving = false, saved = true) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSaving = false) }
+                _messages.send(e.message ?: "Não foi possível salvar a atividade.")
+            }
         }
     }
 }
