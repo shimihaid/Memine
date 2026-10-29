@@ -35,7 +35,7 @@ class AppContainer(context: Context) {
     }
 
     val activityRepository: ActivityRepository by lazy {
-        ActivityRepository(database.activityDao())
+        ActivityRepository(database.activityDao(), database.categoryDao())
     }
 
     val calendarRepository: CalendarRepository by lazy {
