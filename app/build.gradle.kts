@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.example.lasttime"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.example.lasttime"
@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.activity.compose)
+    implementation("androidx.compose.material:material-icons-extended")
 
     // ViewModel + collectAsStateWithLifecycle
     implementation(libs.androidx.lifecycle.viewmodel.compose)
