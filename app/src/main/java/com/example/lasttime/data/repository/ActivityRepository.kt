@@ -23,12 +23,17 @@ class ActivityRepository(private val dao: ActivityDao) {
     fun observeHistory(activityId: Long): Flow<List<LocalDate>> =
         dao.observeHistory(activityId).map { list -> list.map { it.performedAt } }
 
-    suspend fun addActivity(name: String, performedAt: LocalDate): Result<Long> = safeCall {
+    suspend fun addActivity(
+        name: String,
+        performedAt: LocalDate,
+        category: String = "Trabalho",
+        notes: String = ""
+    ): Result<Long> = safeCall {
         ActivityRules.validateName(name)?.let { throw InvalidActivityException(it) }
         if (performedAt.isAfter(LocalDate.now())) {
             throw InvalidActivityException("A data não pode estar no futuro.")
         }
-        dao.insertActivityWithHistory(name.trim(), performedAt)
+        dao.insertActivityWithHistory(name.trim(), performedAt, category, notes)
     }
 
     suspend fun markPerformedToday(activityId: Long): Result<MarkOutcome> = safeCall {
@@ -41,10 +46,28 @@ class ActivityRepository(private val dao: ActivityDao) {
         if (dao.deleteActivity(activityId) == 0) throw ActivityNotFoundException()
     }
 
+    suspend fun seedInitialDataIfEmpty() {
+        if (dao.countActivities() == 0) {
+            val today = LocalDate.now()
+            // Inicializa com as tarefas dos prints se o banco estiver vazio
+            // Trabalho
+            dao.insertActivityWithHistory("Atualizar a planilha semanal", today.minusDays(6), "Trabalho", "")
+            dao.insertActivityWithHistory("Fazer o pagamento mensal", today.minusDays(15), "Trabalho", "")
+            // Pessoal
+            dao.insertActivityWithHistory("Cortar o cabelo", today.minusDays(60), "Pessoal", "")
+            dao.insertActivityWithHistory("Lavar o carro", today.minusDays(60), "Pessoal", "")
+            // Plantas
+            dao.insertActivityWithHistory("Regar a suculenta", today.minusDays(7), "Plantas", "")
+            dao.insertActivityWithHistory("Podar a roseira", today.minusDays(90), "Plantas", "")
+        }
+    }
+
     private fun ActivityEntity.toDomain(today: LocalDate) = Activity(
         id = id,
         name = name,
         lastPerformedAt = lastPerformedAt,
-        daysSinceLastPerformed = calculateDaysSince(lastPerformedAt, today)
+        daysSinceLastPerformed = calculateDaysSince(lastPerformedAt, today),
+        category = category,
+        notes = notes
     )
 }

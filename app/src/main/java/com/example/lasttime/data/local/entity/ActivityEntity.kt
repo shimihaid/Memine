@@ -8,5 +8,7 @@ import java.time.LocalDate
 data class ActivityEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val lastPerformedAt: LocalDate
+    val lastPerformedAt: LocalDate,
+    val category: String = "Trabalho",
+    val notes: String = ""
 )

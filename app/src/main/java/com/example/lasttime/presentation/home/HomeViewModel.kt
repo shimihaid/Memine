@@ -27,7 +27,6 @@ sealed interface HomeUiState {
     data class Error(val message: String) : HomeUiState
 }
 
-/** Estado da informação externa. Separado, para a API não travar. */
 sealed interface HolidayUiState {
     data object Loading : HolidayUiState
     data class Loaded(val holiday: Holiday?) : HolidayUiState
@@ -37,6 +36,12 @@ sealed interface HolidayUiState {
 sealed interface HomeEvent {
     data class MarkToday(val activityId: Long) : HomeEvent
     data class Delete(val activityId: Long) : HomeEvent
+    data class AddActivity(
+        val name: String,
+        val date: LocalDate,
+        val category: String,
+        val notes: String
+    ) : HomeEvent
     data object RetryHoliday : HomeEvent
 }
 
@@ -45,7 +50,6 @@ class HomeViewModel(
     private val calendarRepository: CalendarRepository
 ) : ViewModel() {
 
-    // A lista reage sozinha a qualquer mudança do Room (Flow)
     val uiState: StateFlow<HomeUiState> = activityRepository.observeActivities()
         .map<List<Activity>, HomeUiState> { HomeUiState.Success(it) }
         .catch { emit(HomeUiState.Error("Não foi possível carregar as atividades.")) }
@@ -58,6 +62,9 @@ class HomeViewModel(
     val messages: Flow<String> = _messages.receiveAsFlow()
 
     init {
+        viewModelScope.launch {
+            activityRepository.seedInitialDataIfEmpty()
+        }
         loadHoliday()
     }
 
@@ -65,7 +72,17 @@ class HomeViewModel(
         when (event) {
             is HomeEvent.MarkToday -> markToday(event.activityId)
             is HomeEvent.Delete -> delete(event.activityId)
+            is HomeEvent.AddActivity -> addActivity(event.name, event.date, event.category, event.notes)
             HomeEvent.RetryHoliday -> loadHoliday()
+        }
+    }
+
+    private fun addActivity(name: String, date: LocalDate, category: String, notes: String) {
+        viewModelScope.launch {
+            activityRepository.addActivity(name, date, category, notes).fold(
+                onSuccess = { _messages.send("Atividade salva com sucesso.") },
+                onFailure = { _messages.send(it.toUserMessage("Não foi possível salvar a atividade.")) }
+            )
         }
     }
 

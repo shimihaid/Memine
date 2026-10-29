@@ -15,8 +15,20 @@ fun LocalDate.toUtcMillis(): Long = atStartOfDay(ZoneOffset.UTC).toInstant().toE
 fun Long.toLocalDateFromUtcMillis(): LocalDate =
     Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 
-fun daysLabel(days: Long): String = when (days) {
-    0L -> "Hoje"
-    1L -> "Há 1 dia"
-    else -> "Há $days dias"
+fun daysLabel(days: Long): String = when {
+    days == 0L -> "Hoje"
+    days == 1L -> "Há 1 dia"
+    days in 2L..6L -> "Há $days dias"
+    days in 7L..13L -> "Há 1 semana"
+    days in 14L..29L -> "Há $days dias"
+    days in 30L..59L -> "Há 1 mês"
+    days in 60L..364L -> {
+        val months = days / 30
+        "Há $months meses"
+    }
+    days in 365L..729L -> "Há 1 ano"
+    else -> {
+        val years = days / 365
+        "Há $years anos"
+    }
 }

@@ -9,8 +9,8 @@ import com.example.lasttime.data.local.entity.ActivityHistoryEntity
 
 @Database(
     entities = [ActivityEntity::class, ActivityHistoryEntity::class],
-    version = 1,
-    exportSchema = true
+    version = 2,
+    exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class LastTimeDatabase : RoomDatabase() {

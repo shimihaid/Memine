@@ -18,7 +18,9 @@ import kotlinx.serialization.json.Json
 class AppContainer(context: Context) {
 
     private val database: LastTimeDatabase =
-        Room.databaseBuilder(context, LastTimeDatabase::class.java, "last_time.db").build()
+        Room.databaseBuilder(context, LastTimeDatabase::class.java, "last_time.db")
+            .fallbackToDestructiveMigration(true)
+            .build()
 
     private val httpClient = HttpClient(OkHttp) {
         install(ContentNegotiation) {
