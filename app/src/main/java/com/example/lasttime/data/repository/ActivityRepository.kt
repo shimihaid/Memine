@@ -2,10 +2,13 @@ package com.example.lasttime.data.repository
 
 import com.example.lasttime.data.local.dao.ActivityDao
 import com.example.lasttime.data.local.dao.CategoryDao
+import com.example.lasttime.data.local.dao.KanbanTaskDao
 import com.example.lasttime.data.local.entity.ActivityEntity
 import com.example.lasttime.data.local.entity.CategoryEntity
+import com.example.lasttime.data.local.entity.KanbanTaskEntity
 import com.example.lasttime.domain.model.Activity
 import com.example.lasttime.domain.model.ActivityRules
+import com.example.lasttime.domain.model.KanbanTask
 import com.example.lasttime.domain.model.MarkOutcome
 import com.example.lasttime.domain.model.calculateDaysSince
 import kotlinx.coroutines.flow.Flow
@@ -14,14 +17,14 @@ import java.time.LocalDate
 
 /**
  * ==============================================================================
- * REPOSITÓRIO SIMPLES
+ * REPOSITÓRIO SIMPLES COM SUPORTE A KANBAN
  * ==============================================================================
  * O Repositório é a única ponte entre o Banco de Dados (Room) e a ViewModel.
- * Ele pega as informações do banco e entrega prontas para uso.
  */
 class ActivityRepository(
     private val dao: ActivityDao,
-    private val categoryDao: CategoryDao
+    private val categoryDao: CategoryDao,
+    private val kanbanTaskDao: KanbanTaskDao
 ) {
 
     /** Retorna o fluxo contínuo de atividades salvas no banco de dados */
@@ -38,6 +41,58 @@ class ActivityRepository(
     /** Retorna o histórico de datas de uma atividade específica */
     fun observeHistory(activityId: Long): Flow<List<LocalDate>> =
         dao.observeHistory(activityId).map { list -> list.map { it.performedAt } }
+
+    // ==============================================================================
+    // OPERAÇÕES DO KANBAN DE SUB-TAREFAS
+    // ==============================================================================
+
+    /** Observa as tarefas do Kanban de uma atividade em tempo real */
+    fun observeKanbanTasks(activityId: Long): Flow<List<KanbanTask>> =
+        kanbanTaskDao.observeTasksForActivity(activityId).map { list ->
+            list.map { KanbanTask(it.id, it.activityId, it.title, it.status) }
+        }
+
+    /** Adiciona uma nova sub-tarefa no Kanban da atividade */
+    suspend fun addKanbanTask(activityId: Long, title: String): Long {
+        val trimmed = title.trim()
+        if (trimmed.isBlank()) throw Exception("O nome da tarefa não pode ser vazio.")
+        return kanbanTaskDao.insertTask(
+            KanbanTaskEntity(
+                activityId = activityId,
+                title = trimmed,
+                status = KanbanTask.STATUS_PENDING
+            )
+        )
+    }
+
+    /**
+     * Atualiza o status de uma sub-tarefa do Kanban ("Pendente", "Em andamento", "Concluído").
+     * SE TODAS as sub-tarefas da atividade forem concluídas, marca a atividade principal como realizada HOJE!
+     * @return true se a atividade principal foi salva como realizada hoje automaticamente.
+     */
+    suspend fun updateKanbanTaskStatus(taskId: Long, activityId: Long, newStatus: String): Boolean {
+        kanbanTaskDao.updateTaskStatus(taskId, newStatus)
+
+        // Verifica se TODAS as sub-tarefas desta atividade estão concluídas
+        val allTasks = kanbanTaskDao.getTasksForActivity(activityId)
+        val allCompleted = allTasks.isNotEmpty() && allTasks.all { it.status == KanbanTask.STATUS_COMPLETED }
+
+        if (allCompleted) {
+            // Marca automaticamente a atividade principal como realizada no dia de HOJE
+            dao.markPerformed(activityId, LocalDate.now())
+            return true
+        }
+        return false
+    }
+
+    /** Exclui uma sub-tarefa do Kanban pelo ID */
+    suspend fun deleteKanbanTask(taskId: Long) {
+        kanbanTaskDao.deleteTask(taskId)
+    }
+
+    // ==============================================================================
+    // OPERAÇÕES DE ATIVIDADES E CATEGORIAS
+    // ==============================================================================
 
     /** Adiciona uma nova categoria no banco de dados */
     suspend fun addCategory(name: String) {
@@ -91,12 +146,20 @@ class ActivityRepository(
 
         if (dao.countActivities() == 0) {
             val today = LocalDate.now()
-            dao.insertActivityWithHistory("Atualizar a planilha semanal", today.minusDays(6), "Trabalho", "")
+            val id1 = dao.insertActivityWithHistory("Atualizar a planilha semanal", today.minusDays(6), "Trabalho", "")
             dao.insertActivityWithHistory("Fazer o pagamento mensal", today.minusDays(15), "Trabalho", "")
             dao.insertActivityWithHistory("Cortar o cabelo", today.minusDays(60), "Pessoal", "")
-            dao.insertActivityWithHistory("Lavar o carro", today.minusDays(60), "Pessoal", "")
+            val id2 = dao.insertActivityWithHistory("Lavar o carro", today.minusDays(60), "Pessoal", "")
             dao.insertActivityWithHistory("Regar a suculenta", today.minusDays(7), "Plantas", "")
             dao.insertActivityWithHistory("Podar a roseira", today.minusDays(90), "Plantas", "")
+
+            // Exemplo de Kanban inicial para a atividade 1
+            kanbanTaskDao.insertTask(KanbanTaskEntity(activityId = id1, title = "Conferir extrato", status = "Pendente"))
+            kanbanTaskDao.insertTask(KanbanTaskEntity(activityId = id1, title = "Preencher dados de gastos", status = "Em andamento"))
+
+            // Exemplo de Kanban inicial para a atividade de Lavar o Carro
+            kanbanTaskDao.insertTask(KanbanTaskEntity(activityId = id2, title = "Aspirar os bancos", status = "Pendente"))
+            kanbanTaskDao.insertTask(KanbanTaskEntity(activityId = id2, title = "Enxaguar a lataria", status = "Pendente"))
         }
     }
 
