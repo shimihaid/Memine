@@ -35,6 +35,7 @@ import com.example.lasttime.presentation.history.HistoryScreen
 import com.example.lasttime.presentation.home.HomeScreen
 import com.example.lasttime.presentation.home.HomeViewModel
 import com.example.lasttime.ui.theme.AppBackground
+import java.time.LocalDate
 
 /**
  * ==============================================================================
@@ -57,6 +58,8 @@ fun AppNavigation(
     val availableCategories = categories.ifEmpty { listOf("Trabalho", "Pessoal", "Plantas") }
 
     var showAddDialog by remember { mutableStateOf(false) }
+    var selectedCalendarDate by remember { mutableStateOf<LocalDate?>(null) }
+
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Mostra as mensagens em formato de Toast/Snackbar
@@ -83,7 +86,10 @@ fun AppNavigation(
                         MemineTab.CALENDARIO -> navController.navigateToTab(Routes.CALENDAR)
                     }
                 },
-                onAddClick = { showAddDialog = true }
+                onAddClick = {
+                    selectedCalendarDate = null
+                    showAddDialog = true
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -113,7 +119,10 @@ fun AppNavigation(
                 // Rota do Calendário
                 composable(Routes.CALENDAR) {
                     CalendarScreen(
-                        onDayClick = {}
+                        onAddActivityForDate = { date ->
+                            selectedCalendarDate = date
+                            showAddDialog = true
+                        }
                     )
                 }
 
@@ -137,17 +146,22 @@ fun AppNavigation(
                 }
             }
 
-            // Modal para Criar Atividade
+            // Modal para Criar Atividade (injetando a data selecionada do calendário se houver)
             if (showAddDialog) {
                 AddActivityDialog(
-                    onDismiss = { showAddDialog = false },
+                    onDismiss = {
+                        showAddDialog = false
+                        selectedCalendarDate = null
+                    },
                     availableCategories = availableCategories,
+                    initialDate = selectedCalendarDate,
                     onAddCategory = { newCategory ->
                         homeViewModel.addCategory(newCategory)
                     },
                     onSave = { name, date, category, notes ->
                         homeViewModel.addActivity(name, date, category, notes)
                         showAddDialog = false
+                        selectedCalendarDate = null
                     }
                 )
             }
