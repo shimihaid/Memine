@@ -80,7 +80,8 @@ fun AddActivityDialog(
     onDismiss: () -> Unit,
     onSave: (name: String, date: LocalDate, category: String, notes: String) -> Unit,
     availableCategories: List<String> = listOf("Trabalho", "Pessoal", "Plantas"),
-    onAddCategory: ((String) -> Unit)? = null
+    onAddCategory: ((String) -> Unit)? = null,
+    initialDate: LocalDate? = null
 ) {
     // Estado da categoria atualmente selecionada no dropdown
     var category by remember { mutableStateOf("Categoria") }
@@ -94,11 +95,11 @@ fun AddActivityDialog(
     // Estado do nome digitado para a atividade
     var name by remember { mutableStateOf("") }
 
-    // Estado da data escolhida (inicializada com o dia de hoje)
-    var date by remember { mutableStateOf(LocalDate.now()) }
+    // Estado da data escolhida (inicializada com a data informada ou o dia de hoje)
+    var date by remember { mutableStateOf(initialDate ?: LocalDate.now()) }
 
-    // Flag para indicar se o usuário já escolheu uma data explicitamente
-    var hasPickedDate by remember { mutableStateOf(false) }
+    // Flag para indicar se a data está definida
+    var hasPickedDate by remember { mutableStateOf(initialDate != null) }
 
     // Estado para o texto do campo de anotações
     var notes by remember { mutableStateOf("") }
